@@ -1,7 +1,17 @@
-\documentclass{report}
+\documentclass[12pt]{article}
 
-\usepackage{amsmath}
+\usepackage{tikz}
+
+\title{ECS7002P Assignment 1 Report - Group G}
+
+\author{Bo Peng, Yunyao Liu, Jiageng Li}
 
 \begin{document}
-    
+    \foreach \i in {0,1,...,9}{
+        \foreach \j in {0,1,...,9}{
+            \IfFileExists{docs/chap\i\j.tex}{
+                \include{docs/chap\i\j}
+            }{}
+        }
+    }
 \end{document}
