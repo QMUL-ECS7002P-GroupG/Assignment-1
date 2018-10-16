@@ -10,3 +10,4 @@
 /report/*.log
 /report/*.fls
 /report/LatexTemplates/
+/report/*.pdf
