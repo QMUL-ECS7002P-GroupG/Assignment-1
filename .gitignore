@@ -1,5 +1,6 @@
 *.class
 /microrts/bin/
+/microrts/out/
 /microrts/.classpath
 /microrts/.project
 *.iml
