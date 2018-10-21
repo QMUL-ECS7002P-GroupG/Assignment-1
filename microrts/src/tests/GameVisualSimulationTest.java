@@ -5,7 +5,6 @@ import ai.*;
 import ai.abstraction.WorkerRush;
 import ai.abstraction.pathfinding.BFSPathFinding;
 import ai.evaluation.SimpleSqrtEvaluationFunction3;
-import exercise5.BotExercise5;
 import gui.PhysicalGameStatePanel;
 import javax.swing.JFrame;
 
