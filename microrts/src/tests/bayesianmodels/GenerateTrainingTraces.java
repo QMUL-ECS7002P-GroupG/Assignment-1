@@ -26,7 +26,6 @@ import rts.PlayerAction;
 import rts.Trace;
 import rts.TraceEntry;
 import rts.units.UnitTypeTable;
-import tournaments.RoundRobinTournament;
 import util.XMLWriter;
 
 public class GenerateTrainingTraces {
@@ -149,7 +148,16 @@ public class GenerateTrainingTraces {
 
                             gameover = gs.cycle();
                             if (DEBUG>=1) {System.out.println("cycle done.");out.flush();}
-                            RoundRobinTournament.windowSleep(gs, w);
+                            if (w!=null) {
+                                w.setStateCloning(gs);
+                                w.repaint();
+                                try {
+                                    Thread.sleep(1);    // give time to the window to repaint
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+//                              if (DEBUG>=1) {System.out.println("repaint done.");out.flush();}
+                            }
                         } while (!gameover && 
                                  (gs.getTime() < max_cycles) && 
                                  (gs.getTime() - lastTimeActionIssued < max_inactive_cycles));

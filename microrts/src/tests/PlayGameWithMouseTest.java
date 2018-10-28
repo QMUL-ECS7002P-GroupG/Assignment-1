@@ -1,3 +1,7 @@
+ /*
+ * To change this template, choose Tools | Templates
+ * and open the template in the editor.
+ */
 package tests;
 
 import ai.core.AI;
@@ -14,47 +18,41 @@ import rts.PlayerAction;
 import rts.units.UnitTypeTable;
 
 /**
+ *
  * @author santi
  */
 public class PlayGameWithMouseTest {
     public static void main(String args[]) throws Exception {
         UnitTypeTable utt = new UnitTypeTable();
-        PhysicalGameState pgs = PhysicalGameState.load("maps/16x16/basesWorkers16x16.xml", utt);  // Set map
+        PhysicalGameState pgs = PhysicalGameState.load("maps/16x16/basesWorkers16x16.xml", utt);
 
         GameState gs = new GameState(pgs, utt);
-        int MAXCYCLES = 10000;  // Set maximum game length
-        int TIME_BUDGET = 100;  // Set time budget
+        int MAXCYCLES = 10000;
+        int PERIOD = 100;
         boolean gameover = false;
                 
         PhysicalGameStatePanel pgsp = new PhysicalGameStatePanel(gs);
-        PhysicalGameStateMouseJFrame w = new PhysicalGameStateMouseJFrame("Game State Visualizer (Mouse)",
-                                                                          640,640,pgsp);
-//        PhysicalGameStateMouseJFrame w = new PhysicalGameStateMouseJFrame("Game State Visualizer (Mouse)",
-//                                                                          400,400,pgsp);
+        PhysicalGameStateMouseJFrame w = new PhysicalGameStateMouseJFrame("Game State Visuakizer (Mouse)",640,640,pgsp);
+//        PhysicalGameStateMouseJFrame w = new PhysicalGameStateMouseJFrame("Game State Visuakizer (Mouse)",400,400,pgsp);
 
-        AI ai1 = new MouseController(w);  // This is a human player controller
-
-        // Set opponent AI
+        AI ai1 = new MouseController(w);
 //        AI ai2 = new PassiveAI();
 //        AI ai2 = new RandomBiasedAI();
 //        AI ai2 = new LightRush(utt, new AStarPathFinding());
-        AI ai2 = new ContinuingAI(new NaiveMCTS(TIME_BUDGET, -1, 100, 20, 0.33f, 0.0f, 0.75f, new RandomBiasedAI(), new SimpleEvaluationFunction(), true));
+        AI ai2 = new ContinuingAI(new NaiveMCTS(PERIOD, -1, 100, 20, 0.33f, 0.0f, 0.75f, new RandomBiasedAI(), new SimpleEvaluationFunction(), true));
 
-        // Play game
-        long nextTimeToUpdate = System.currentTimeMillis() + TIME_BUDGET;
-        do {
-            if (System.currentTimeMillis() >= nextTimeToUpdate) {
-                PlayerAction pa1 = ai1.getAction(0, gs);  // Get action from player 1
-                PlayerAction pa2 = ai2.getAction(1, gs);  // Get action from player 2
-
-                // Issue actions
+        long nextTimeToUpdate = System.currentTimeMillis() + PERIOD;
+        do{
+            if (System.currentTimeMillis()>=nextTimeToUpdate) {
+                PlayerAction pa1 = ai1.getAction(0, gs);
+                PlayerAction pa2 = ai2.getAction(1, gs);
                 gs.issueSafe(pa1);
                 gs.issueSafe(pa2);
 
-                // Game ticks forward
+                // simulate:
                 gameover = gs.cycle();
                 w.repaint();
-                nextTimeToUpdate += TIME_BUDGET;
+                nextTimeToUpdate+=PERIOD;
             } else {
                 try {
                     Thread.sleep(1);
@@ -62,9 +60,7 @@ public class PlayGameWithMouseTest {
                     e.printStackTrace();
                 }
             }
-        } while (!gameover && gs.getTime() < MAXCYCLES);
-
-        // Tell the AIs the game is over
+        }while(!gameover && gs.getTime()<MAXCYCLES);
         ai1.gameOver(gs.winner());
         ai2.gameOver(gs.winner());
         
