@@ -4,6 +4,7 @@
  */
 package tests;
 
+import GroupG_Assignment_1.GroupG_AI_1;
 import ai.core.AI;
 import ai.*;
 import ai.abstraction.WorkerRush;
@@ -34,7 +35,8 @@ public class GameVisualSimulationTest {
         int PERIOD = 20;
         boolean gameover = false;
         
-        AI ai1 = new WorkerRush(utt, new BFSPathFinding());        
+        //AI ai1 = new WorkerRush(utt, new BFSPathFinding());
+        AI ai1 = new GroupG_AI_1(utt, new BFSPathFinding());
         AI ai2 = new RandomBiasedAI();
 
         JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_BLACK);

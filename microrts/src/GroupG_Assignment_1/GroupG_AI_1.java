@@ -9,15 +9,20 @@ import rts.units.Unit;
 import rts.units.UnitType;
 import rts.units.UnitTypeTable;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 public class GroupG_AI_1 extends WorkerRushPlusPlus {
+    Random r = new Random();
     static final int baseAlarmDistance = 3;
     static final int workersInEachBase = 3;
     static final int resourceRange = 5;
     static final int[] roundX = {-2, -2, -2, -2, -2, -1, 0, 1, 2, 2, 2, 2, 2, 1, 0, -1};
     static final int[] roundY = {-2, -1, 0, 1, 2, 2, 2, 2, 2, 1, 0, -1, -2, -2, -2, -2};
+    static final int[] conjX = {-1, 0, 1, 0};
+    static final int[] conjY = {0, 1, 0, -1};
 
     protected UnitType baseType, workerType, barrackType, lightType, heavyType, rangedType;
 
@@ -26,7 +31,7 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
     protected void setTypes() {
         baseType = utt.getUnitType("Base");
         workerType = utt.getUnitType("Worker");
-        barrackType = utt.getUnitType("Barrack");
+        barrackType = utt.getUnitType("Barracks");
         lightType = utt.getUnitType("Light");
         heavyType = utt.getUnitType("Heavy");
         rangedType = utt.getUnitType("Ranged");
@@ -213,24 +218,26 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
 
         if (enemyAroundBase.isEmpty()) {    // no enemy around our bases
             boolean pathToEnemyExists = false;
-            for (Unit enemy : enemyMovableUnits)
-                if (pf.pathExists(baseList.getFirst(), enemy.getPosition(pgs), gs, new ResourceUsage())) {
-                    pathToEnemyExists = true;
-                    break;
-                }
-            if (!pathToEnemyExists)
-                for (Unit enemy : enemyBuildings)
-                    if (pf.pathExists(baseList.getFirst(), enemy.getPosition(pgs), gs, new ResourceUsage())) {
+            ArrayList<Unit> ourUnits = new ArrayList<>(workerList);
+            ourUnits.addAll(meleeList);
+            ArrayList<Unit> enemyUnits = new ArrayList<>(enemyMovableUnits);
+            enemyUnits.addAll(enemyBuildings);
+            for (Unit u : ourUnits) {
+                for (Unit target : enemyUnits)
+                    if (pf.pathToPositionInRangeExists(u, target.getPosition(pgs), 1, gs, null)) {
                         pathToEnemyExists = true;
                         break;
                     }
+                if (pathToEnemyExists)
+                    break;
+            }
 
             if (pathToEnemyExists)  // Exist a path to enemy
                 return super.getAction(player, gs);
             else {  // No path to enemy
                 resourceUsed = 0;
                 // Base behavior
-                int workerLimit = baseList.size() * workersInEachBase + 1;
+                int workerLimit = baseList.size() * workersInEachBase;
                 for (Unit base : baseList)
                     if (gs.getActionAssignment(base) == null &&
                             workerList.size() < workerLimit && p.getResources() - resourceUsed >= workerType.cost) {
@@ -294,6 +301,24 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                             ++rangedNum;
                         }
                     }
+
+                // Melee Behavior
+                for (Unit melee : meleeList) {
+                    int emptyDirection[] = {-1, -1, -1, -1};
+                    int emptyDirectionNum = 0;
+                    boolean conjWithBarrack = false;
+                    for (int i = 0; i < 4; ++i) {
+                        Unit u = pgs.getUnitAt(melee.getX() + conjX[i], melee.getY() + conjY[i]);
+                        if (u == null)
+                            emptyDirection[emptyDirectionNum++] = i;
+                        else if (u.getType() == barrackType)
+                            conjWithBarrack = true;
+                    }
+                    if (emptyDirectionNum > 0 && (emptyDirectionNum < 3 || conjWithBarrack)) {
+                        int direction = r.nextInt(emptyDirectionNum);
+                        move(melee, melee.getX() + conjX[direction], melee.getY() + conjY[direction]);
+                    }
+                }
             }
         } else {    // have enemy around our bases
             AttackClosestEnemy(meleeList, enemyAroundBase);
