@@ -93,12 +93,16 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
     protected void BuildBase(Unit worker, List<Unit> freeResource, PhysicalGameState pgs) {
         int X = -1, Y = -1;
         for (Unit target : freeResource) {
-            for (int i = 0; i < 16; ++i)
-                if (pgs.getUnitAt(target.getX() + roundX[i], target.getY() + roundY[i]) == null) {
-                    X = target.getX() + roundX[i];
-                    Y = target.getY() + roundY[i];
+            for (int i = 0; i < 16; ++i) {
+                X = target.getX() + roundX[i];
+                Y = target.getY() + roundY[i];
+                if (X >= 0 && Y >= 0 && X < pgs.getWidth() && Y < pgs.getHeight() && pgs.getUnitAt(X, Y) == null) {
                     break;
+                } else {
+                    X = -1;
+                    Y = -1;
                 }
+            }
             if (X >= 0)
                 break;
         }
@@ -120,7 +124,7 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
             for (int i = 0; i < 16; ++i) {
                 X = target.getX() + roundX[i];
                 Y = target.getY() + roundY[i];
-                if (pgs.getUnitAt(X, Y) == null) {
+                if (X >= 0 && Y >= 0 && X < pgs.getWidth() && Y < pgs.getHeight() && pgs.getUnitAt(X, Y) == null) {
                     for (Unit u : pgs.getUnitsAround(X, Y, 2))
                         if (u.getType().isResource) {
                             X = -1;
@@ -181,6 +185,9 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
     }
 
     public PlayerAction getAction(int player, GameState gs) {
+        if (gs.getTime() == 210) {
+            int a = 0;
+        }
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Player p = gs.getPlayer(player);
         PlayerAction pa = new PlayerAction();
