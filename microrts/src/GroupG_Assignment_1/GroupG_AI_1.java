@@ -308,11 +308,15 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                     int emptyDirectionNum = 0;
                     boolean conjWithBarrack = false;
                     for (int i = 0; i < 4; ++i) {
-                        Unit u = pgs.getUnitAt(melee.getX() + conjX[i], melee.getY() + conjY[i]);
-                        if (u == null)
-                            emptyDirection[emptyDirectionNum++] = i;
-                        else if (u.getType() == barrackType)
-                            conjWithBarrack = true;
+                        int X = melee.getX() + conjX[i];
+                        int Y = melee.getY() + conjY[i];
+                        if (X >= 0 && X < pgs.getWidth() && Y >= 0 && Y <= pgs.getHeight()) {
+                            Unit u = pgs.getUnitAt(melee.getX() + conjX[i], melee.getY() + conjY[i]);
+                            if (u == null)
+                                emptyDirection[emptyDirectionNum++] = i;
+                            else if (u.getType() == barrackType)
+                                conjWithBarrack = true;
+                        }
                     }
                     if (emptyDirectionNum > 0 && (emptyDirectionNum < 3 || conjWithBarrack)) {
                         int direction = r.nextInt(emptyDirectionNum);

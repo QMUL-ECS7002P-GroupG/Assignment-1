@@ -5,6 +5,7 @@
 package tests;
 
 import GroupG_Assignment_1.GroupG_AI_1;
+import ai.abstraction.WorkerRushPlusPlus;
 import ai.core.AI;
 import ai.*;
 import ai.abstraction.WorkerRush;
@@ -27,7 +28,7 @@ import util.XMLWriter;
 public class GameVisualSimulationTest {
     public static void main(String args[]) throws Exception {
         UnitTypeTable utt = new UnitTypeTable();
-        PhysicalGameState pgs = PhysicalGameState.load("maps/16x16/basesWorkers16x16.xml", utt);
+        PhysicalGameState pgs = PhysicalGameState.load("maps/24x24/basesWorkers24x24H.xml", utt);
 //        PhysicalGameState pgs = MapGenerator.basesWorkers8x8Obstacle();
 
         GameState gs = new GameState(pgs, utt);
@@ -36,8 +37,8 @@ public class GameVisualSimulationTest {
         boolean gameover = false;
         
         //AI ai1 = new WorkerRush(utt, new BFSPathFinding());
-        AI ai1 = new GroupG_AI_1(utt, new BFSPathFinding());
-        AI ai2 = new RandomBiasedAI();
+        AI ai2 = new GroupG_AI_1(utt, new BFSPathFinding());
+        AI ai1 = new WorkerRushPlusPlus(utt, new BFSPathFinding());
 
         JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_BLACK);
 //        JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_WHITE);
