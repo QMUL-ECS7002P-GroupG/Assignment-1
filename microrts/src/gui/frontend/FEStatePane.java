@@ -6,6 +6,7 @@
 
 package gui.frontend;
 
+import GroupG_Assignment_1.GroupG_AI_1;
 import ai.BranchingFactorCalculatorBigInteger;
 import ai.core.AI;
 import ai.core.AIWithComputationBudget;
@@ -161,7 +162,8 @@ public class FEStatePane extends JPanel {
                    AHTNAI.class,
                    InformedNaiveMCTS.class,
                    PuppetSearchMCTS.class,
-                   SCV.class
+                   SCV.class,
+                   GroupG_AI_1.class
                   };
 
     

@@ -14,11 +14,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
+import static java.lang.Math.max;
+import static java.lang.Math.min;
+
 public class GroupG_AI_1 extends WorkerRushPlusPlus {
     Random r = new Random();
     static final int baseAlarmDistance = 3;
     static final int workersInEachBase = 3;
-    static final int resourceRange = 5;
+    static final double workersForEachResource = 1.5;
+    static final int resourceRange = 3;
+    static final int attackThreshold = 1;
+    static final int newBarracksThreshold = 12;
     static final int[] roundX = {-2, -2, -2, -2, -2, -1, 0, 1, 2, 2, 2, 2, 2, 1, 0, -1};
     static final int[] roundY = {-2, -1, 0, 1, 2, 2, 2, 2, 2, 1, 0, -1, -2, -2, -2, -2};
     static final int[] conjX = {-1, 0, 1, 0};
@@ -69,6 +75,70 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
         return ManhattanDistance(a, b.getX(), b.getY());
     }
 
+    protected boolean PathExistsInRange(int startX, int startY, int targetX, int targetY, int range,
+                                        PhysicalGameState pgs) {
+        boolean visited[][] = new boolean[pgs.getWidth()][pgs.getHeight()];
+        for (int i = 0; i < pgs.getWidth(); ++i)
+            for (int j = 0; j < pgs.getHeight(); ++j)
+                visited[i][j] = false;
+        for (Unit u : pgs.getUnits())
+            if (u.getType().isResource)
+                visited[u.getX()][u.getY()] = true;
+        int queX[] = new int[pgs.getWidth() * pgs.getHeight() + 1],
+            queY[] = new int[pgs.getWidth() * pgs.getHeight() + 1];
+        int head = 0, tail = 1;
+        queX[0] = startX;
+        queY[0] = startY;
+        visited[startX][startY] = true;
+        while (head < tail) {
+            for (int i = 0; i < 4; ++i) {
+                int nextX = queX[head] + conjX[i],
+                    nextY = queY[head] + conjY[i];
+                if (nextX >= 0 && nextX < pgs.getWidth() && nextY >= 0 && nextY < pgs.getHeight() &&
+                        !visited[nextX][nextY]) {
+                    if (ManhattanDistance(nextX, nextY, targetX, targetY) <= range)
+                        return true;
+                    queX[tail] = nextX;
+                    queY[tail] = nextY;
+                    visited[nextX][nextY] = true;
+                    ++tail;
+                }
+            }
+            ++head;
+        }
+        return false;
+    }
+
+    protected void MeleeStandby(Unit melee, List<Unit> enemies, PhysicalGameState pgs) {
+        boolean noEnemyAround = true;
+        for (Unit enemy : enemies)
+            if (ManhattanDistance(melee, enemy) <= 1 + max(melee.getType().attackRange, enemy.getType().attackRange)) {
+                attack(melee, enemy);
+                noEnemyAround = false;
+                break;
+            }
+        if (noEnemyAround) {
+            int emptyDirection[] = {-1, -1, -1, -1};
+            int emptyDirectionNum = 0;
+            boolean conjWithBarrack = false;
+            for (int i = 0; i < 4; ++i) {
+                int X = melee.getX() + conjX[i];
+                int Y = melee.getY() + conjY[i];
+                if (X >= 0 && X < pgs.getWidth() && Y >= 0 && Y <= pgs.getHeight()) {
+                    Unit u = pgs.getUnitAt(melee.getX() + conjX[i], melee.getY() + conjY[i]);
+                    if (u == null)
+                        emptyDirection[emptyDirectionNum++] = i;
+                    else if (u.getType() == barrackType)
+                        conjWithBarrack = true;
+                }
+            }
+            if (emptyDirectionNum > 0 && (emptyDirectionNum < 3 || conjWithBarrack)) {
+                int direction = r.nextInt(emptyDirectionNum);
+                move(melee, melee.getX() + conjX[direction], melee.getY() + conjY[direction]);
+            }
+        }
+    }
+
     protected void AttackClosestEnemy(Unit u, List<Unit> enemyList) {
         Unit closestEnemy = null;
         int closestDistance = -1, distance;
@@ -90,7 +160,7 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
             AttackClosestEnemy(u, enemyList);
     }
 
-    protected void BuildBase(Unit worker, List<Unit> freeResource, PhysicalGameState pgs) {
+    protected void BuildBase(Unit worker, List<Unit> freeResource, Player p, PhysicalGameState pgs) {
         int X = -1, Y = -1;
         for (Unit target : freeResource) {
             for (int i = 0; i < 16; ++i) {
@@ -106,8 +176,9 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
             if (X >= 0)
                 break;
         }
+        List<Integer> reservedPositions = new LinkedList<>();
         if (X >= 0) {
-            build(worker, baseType, X, Y);
+            buildIfNotAlreadyBuilding(worker, baseType, X, Y, reservedPositions, p, pgs);
             resourceUsed += baseType.cost;
             LinkedList<Unit> removingResource = new LinkedList<>();
             for (Unit resource : freeResource)
@@ -118,7 +189,7 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
         }
     }
 
-    protected void BuildBarrack(Unit worker, List<Unit> baseList, PhysicalGameState pgs) {
+    protected void BuildBarrack(Unit worker, List<Unit> baseList, Player p, PhysicalGameState pgs) {
         int X = -1, Y = -1;
         for (Unit target : baseList) {
             for (int i = 0; i < 16; ++i) {
@@ -142,23 +213,21 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                 break;
         }
         if (X >= 0) {
-            build(worker, barrackType, X, Y);
+            buildIfNotAlreadyBuilding(worker, barrackType, X, Y, new LinkedList<Integer>(), p, pgs);
             resourceUsed += barrackType.cost;
         }
     }
 
-    protected void WorkerHarvest(Unit worker, List<Unit> baseList, PhysicalGameState pgs) {
+    protected void WorkerHarvest(Unit worker, List<Unit> baseList, List<Unit> ourResource) {
         Unit closestBase = null;
         Unit closestResource = null;
 
         int closestDistance = -1;
-        for (Unit u : pgs.getUnits()) {
-            if (u.getType().isResource) {
-                int distance = ManhattanDistance(worker, u);
-                if (closestDistance == -1 || distance < closestDistance) {
-                    closestResource = u;
-                    closestDistance = distance;
-                }
+        for (Unit resource : ourResource) {
+            int distance = ManhattanDistance(worker, resource);
+            if (closestDistance == -1 || distance < closestDistance) {
+                closestResource = resource;
+                closestDistance = distance;
             }
         }
 
@@ -184,10 +253,82 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
         }
     }
 
+    protected void BasesBehavior(List<Unit> baseList, List<Unit> workerList, int resourceNum, Player p, GameState gs) {
+        int workerLimit = min((int)(resourceNum * workersForEachResource), baseList.size() * workersInEachBase);
+        for (Unit base : baseList)
+            if (gs.getActionAssignment(base) == null &&
+                    workerList.size() < workerLimit && p.getResources() - resourceUsed >= workerType.cost) {
+                train(base, workerType);
+                --workerLimit;
+                resourceUsed += workerType.cost;
+            }
+    }
+
+    protected void WorkersBehavior(List<Unit> baseList, List<Unit> workerList, List<Unit> ourResource,
+                                   List<Unit> freeResource, List<Unit> meleeList, int barrackNum,
+                                   Player p, GameState gs) {
+        PhysicalGameState pgs = gs.getPhysicalGameState();
+        int workerLimit = min((int)(ourResource.size() * workersForEachResource),
+                baseList.size() * workersInEachBase);
+        for (Unit worker : workerList)
+            if (gs.getActionAssignment(worker) == null) {
+                // build new base
+                if (!freeResource.isEmpty() && p.getResources() - resourceUsed >= baseType.cost)
+                    BuildBase(worker, freeResource, p, pgs);
+                // build new barrack
+                else if ((barrackNum == 0 || p.getResources() - resourceUsed >= newBarracksThreshold) &&
+                        p.getResources() - resourceUsed >= barrackType.cost)
+                    BuildBarrack(worker, baseList, p, pgs);
+                else if (workerLimit > 0) { // Harvest
+                    WorkerHarvest(worker, baseList, ourResource);
+                    --workerLimit;
+                } else {    // free workers as melee units
+                    meleeList.add(worker);
+                }
+            }
+    }
+
+    protected void BarracksBehavior(List<Unit> barrackList, List<Unit> meleeList, int lightRate,
+                                    int heavyRate, int rangedRate, Player p) {
+        int totalRate = lightRate + heavyRate + rangedRate;
+        int lightNum = 0, heavyNum = 0, rangedNum = 0;
+        for (Unit melee : meleeList)
+            if (melee.getType() == lightType)
+                ++lightNum;
+            else if (melee.getType() == heavyType)
+                ++heavyNum;
+            else if (melee.getType() == rangedType)
+                ++rangedNum;
+        int totalNum = lightNum + heavyNum + rangedNum;
+
+        for (Unit barrack : barrackList)
+            if (lightRate > 0 && (lightNum < lightRate || lightNum * totalRate <= lightRate * totalNum)) {
+                if (p.getResources() - resourceUsed >= lightType.cost) {
+                    train(barrack, lightType);
+                    resourceUsed += lightType.cost;
+                    ++lightNum;
+                    ++totalNum;
+                }
+            }
+            else if (heavyRate > 0 && (heavyNum < heavyRate || heavyNum * totalRate <= heavyRate * totalNum)) {
+                if (p.getResources() - resourceUsed >= heavyType.cost) {
+                    train(barrack, heavyType);
+                    resourceUsed += heavyType.cost;
+                    ++heavyNum;
+                    ++totalNum;
+                }
+            }
+            else if (rangedRate > 0 && (rangedNum < rangedRate || rangedNum * totalRate <= rangedRate * totalNum)) {
+                if (p.getResources() - resourceUsed >= rangedType.cost) {
+                    train(barrack, rangedType);
+                    resourceUsed += rangedType.cost;
+                    ++rangedNum;
+                    ++totalNum;
+                }
+            }
+    }
+
     public PlayerAction getAction(int player, GameState gs) {
-        if (gs.getTime() == 210) {
-            int a = 0;
-        }
         PhysicalGameState pgs = gs.getPhysicalGameState();
         Player p = gs.getPlayer(player);
         PlayerAction pa = new PlayerAction();
@@ -216,6 +357,8 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                     enemyMovableUnits.add(u);
                 else
                     enemyBuildings.add(u);
+        List<Unit> ourBuildings = new LinkedList<>(baseList);
+        ourBuildings.addAll(barrackList);
         for (Unit enemy : enemyMovableUnits)
             for (Unit base : baseList)
                 if (ManhattanDistance(enemy, base) <= baseAlarmDistance) {
@@ -224,112 +367,72 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                 }
 
         if (enemyAroundBase.isEmpty()) {    // no enemy around our bases
-            boolean pathToEnemyExists = false;
-            ArrayList<Unit> ourUnits = new ArrayList<>(workerList);
-            ourUnits.addAll(meleeList);
             ArrayList<Unit> enemyUnits = new ArrayList<>(enemyMovableUnits);
             enemyUnits.addAll(enemyBuildings);
+/*
+            ArrayList<Unit> ourUnits = new ArrayList<>(workerList);
+            ourUnits.addAll(meleeList);
             for (Unit u : ourUnits) {
                 for (Unit target : enemyUnits)
-                    if (pf.pathToPositionInRangeExists(u, target.getPosition(pgs), 1, gs, null)) {
+                    if (pf.pathToPositionInRangeExists(u, target.getPosition(pgs), u.getType().attackRange, gs, null)) {
                         pathToEnemyExists = true;
                         break;
                     }
                 if (pathToEnemyExists)
                     break;
             }
+*/
+            boolean pathToEnemyExists = PathExistsInRange(baseList.getFirst().getX(), baseList.getFirst().getY(),
+                    enemyBuildings.getFirst().getX(), enemyBuildings.getFirst().getY(), 1, pgs);
 
-            if (pathToEnemyExists)  // Exist a path to enemy
-                return super.getAction(player, gs);
-            else {  // No path to enemy
-                resourceUsed = 0;
-                // Base behavior
-                int workerLimit = baseList.size() * workersInEachBase;
-                for (Unit base : baseList)
-                    if (gs.getActionAssignment(base) == null &&
-                            workerList.size() < workerLimit && p.getResources() - resourceUsed >= workerType.cost) {
-                        train(base, workerType);
-                        --workerLimit;
-                        resourceUsed += workerType.cost;
-                    }
+            LinkedList<Unit> freeResource = new LinkedList<>();
+            LinkedList<Unit> ourResource = new LinkedList<>();
+            for (Unit u : pgs.getUnits())
+                if (u.getType().isResource) {
+                    boolean baseAroundResource = false;
+                    for (Unit v : pgs.getUnitsAround(u.getX(), u.getY(), resourceRange))
+                        if (v.getType() == baseType) {
+                            baseAroundResource = true;
+                            if (v.getPlayer() == player &&
+                                    PathExistsInRange(v.getX(), v.getY(), u.getX(), u.getY(), 1, pgs))
+                                ourResource.add(u);
+                            break;
+                        }
+                    if (!baseAroundResource)
+                        freeResource.add(u);
+                }
 
-                // Worker behavior
-                LinkedList<Unit> freeResource = new LinkedList<>();
-                for (Unit u : pgs.getUnits())
-                    if (u.getType().isResource) {
-                        boolean baseAroundResource = false;
-                        for (Unit v : pgs.getUnitsAround(u.getX(), u.getY(), resourceRange))
-                            if (v.getType() == baseType) {
-                                baseAroundResource = true;
-                                break;
-                            }
-                        if (!baseAroundResource)
-                            freeResource.add(u);
-                    }
-                for (Unit worker : workerList)
-                    if (gs.getActionAssignment(worker) == null) {
-                        // build new base
-                        if (!freeResource.isEmpty() && p.getResources() - resourceUsed >= baseType.cost)
-                            BuildBase(worker, freeResource, pgs);
-                        // build new barrack
-                        else if (barrackList.isEmpty() && p.getResources() - resourceUsed >= barrackType.cost)
-                            BuildBarrack(worker, baseList, pgs);
-                        else    // Harvest
-                            WorkerHarvest(worker, baseList, pgs);
-                    }
+            if (pathToEnemyExists) {  // Exist a path to enemy
+                if (barrackList.isEmpty()) {
+                    return super.getAction(player, gs);
+                } else {
+                    resourceUsed = 0;
 
-                // Barrack behavior
-                int lightNum = 0, heavyNum = 0, rangedNum = 0;
-                for (Unit melee : meleeList)
-                    if (melee.getType() == lightType)
-                        ++lightNum;
-                    else if (melee.getType() == heavyType)
-                        ++heavyNum;
+                    BasesBehavior(baseList, workerList, ourResource.size(), p, gs);
+
+                    WorkersBehavior(baseList, workerList, ourResource, freeResource, meleeList, barrackList.size(), p, gs);
+
+                    BarracksBehavior(barrackList, meleeList, 8, 2, 3, p);
+
+                    // Melee Behavior
+                    if (ourResource.isEmpty() || meleeList.size() >= attackThreshold)
+                        AttackClosestEnemy(meleeList, enemyUnits);
                     else
-                        ++rangedNum;
-                for (Unit barrack : barrackList)
-                    if (lightNum == heavyNum && lightNum == rangedNum || lightNum < heavyNum || lightNum < rangedNum) {
-                        if (p.getResources() - resourceUsed >= lightType.cost) {
-                            train(barrack, lightType);
-                            resourceUsed += lightType.cost;
-                            ++lightNum;
-                        }
-                    }
-                    else if (heavyNum < lightNum || heavyNum < rangedNum) {
-                        if (p.getResources() - resourceUsed >= heavyType.cost) {
-                            train(barrack, heavyType);
-                            resourceUsed += heavyType.cost;
-                            ++heavyNum;
-                        }
-                    } else {
-                        if (p.getResources() - resourceUsed >= rangedType.cost) {
-                            train(barrack, rangedType);
-                            resourceUsed += rangedType.cost;
-                            ++rangedNum;
-                        }
-                    }
+                        for (Unit melee : meleeList)
+                            MeleeStandby(melee, enemyUnits, pgs);
+                }
+            } else {  // No path to enemy
+                resourceUsed = 0;
+
+                BasesBehavior(baseList, workerList, ourResource.size(), p, gs);
+
+                WorkersBehavior(baseList, workerList, ourResource, freeResource, meleeList, barrackList.size(), p, gs);
+
+                BarracksBehavior(barrackList, meleeList, 0, 0, 1, p);
 
                 // Melee Behavior
-                for (Unit melee : meleeList) {
-                    int emptyDirection[] = {-1, -1, -1, -1};
-                    int emptyDirectionNum = 0;
-                    boolean conjWithBarrack = false;
-                    for (int i = 0; i < 4; ++i) {
-                        int X = melee.getX() + conjX[i];
-                        int Y = melee.getY() + conjY[i];
-                        if (X >= 0 && X < pgs.getWidth() && Y >= 0 && Y <= pgs.getHeight()) {
-                            Unit u = pgs.getUnitAt(melee.getX() + conjX[i], melee.getY() + conjY[i]);
-                            if (u == null)
-                                emptyDirection[emptyDirectionNum++] = i;
-                            else if (u.getType() == barrackType)
-                                conjWithBarrack = true;
-                        }
-                    }
-                    if (emptyDirectionNum > 0 && (emptyDirectionNum < 3 || conjWithBarrack)) {
-                        int direction = r.nextInt(emptyDirectionNum);
-                        move(melee, melee.getX() + conjX[direction], melee.getY() + conjY[direction]);
-                    }
-                }
+                for (Unit melee : meleeList)
+                    MeleeStandby(melee, enemyUnits, pgs);
             }
         } else {    // have enemy around our bases
             AttackClosestEnemy(meleeList, enemyAroundBase);
