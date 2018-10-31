@@ -31,7 +31,7 @@ public class RunTournament {
         int preAnalysisBudgetRestOfTimes = 1000;       // Time budget for pre-analysis for all other cases (default 1s)
         boolean runGC = false;                         // If Java Garbage Collector should be called before each player action (default false)
         int iterationBudget = -1;                      // Iteration budget, set to -1 for infinite (default: -1)
-        int playOnlyWithThisAI = 5;                   //  AI index in list of AIs, if one AI should be included in all matches played (default -1)
+        int playOnlyWithThisAI = 6;                   //  AI index in list of AIs, if one AI should be included in all matches played (default -1)
 
         // Create list of AIs participating in tournament
         List<AI> AIs = new ArrayList<>();

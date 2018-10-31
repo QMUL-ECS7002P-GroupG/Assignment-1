@@ -9,7 +9,9 @@ import ai.abstraction.*;
 import ai.core.AI;
 import ai.*;
 import ai.abstraction.pathfinding.BFSPathFinding;
+import ai.evaluation.SimpleEvaluationFunction;
 import ai.mcts.naivemcts.NaiveMCTS;
+import ai.mcts.uct.UCT;
 import ai.scv.SCV;
 import gui.PhysicalGameStatePanel;
 import java.io.OutputStreamWriter;
@@ -27,7 +29,12 @@ import util.XMLWriter;
 public class GameVisualSimulationTest {
     public static void main(String args[]) throws Exception {
         UnitTypeTable utt = new UnitTypeTable();
-        PhysicalGameState pgs = PhysicalGameState.load("maps/16x16/TwoBasesBarracks16x16.xml", utt);
+        PhysicalGameState pgs = PhysicalGameState.load(
+                //"maps/16x16/TwoBasesBarracks16x16.xml",
+                //"maps/24x24/basesWorkers24x24H.xml",
+                //"maps/16x16/TwoBasesBarracks16x16.xml",
+                "maps/NoWhereToRun9x8.xml",
+                utt);
 //        PhysicalGameState pgs = MapGenerator.basesWorkers8x8Obstacle();
 
         GameState gs = new GameState(pgs, utt);
@@ -37,7 +44,10 @@ public class GameVisualSimulationTest {
         
         //AI ai1 = new WorkerRush(utt, new BFSPathFinding());
         AI ai1 = new GroupG_AI_1(utt, new BFSPathFinding());
-        AI ai2 = new LightRush(utt, new BFSPathFinding());
+        AI ai2 =
+                //new UCT(100, -1, 100, 20, new RandomBiasedAI(), new SimpleEvaluationFunction());
+                //new NaiveMCTS(100, -1, 100, 20, 0.33f, 0.0f, 0.75f, new RandomBiasedAI(), new SimpleEvaluationFunction(), true);
+                new RangedRush(utt, new BFSPathFinding());
 
         JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_BLACK);
 //        JFrame w = PhysicalGameStatePanel.newVisualizer(gs,640,640,false,PhysicalGameStatePanel.COLORSCHEME_WHITE);

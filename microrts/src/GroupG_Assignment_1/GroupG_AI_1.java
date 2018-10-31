@@ -75,6 +75,10 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
         return ManhattanDistance(a, b.getX(), b.getY());
     }
 
+    /*
+        BFS path finding from (startX, startY) to (targetX, targetY) in range.
+        Methods in the PathFind.class require a unit, this method does not.
+     */
     protected boolean PathExistsInRange(int startX, int startY, int targetX, int targetY, int range,
                                         PhysicalGameState pgs) {
         boolean visited[][] = new boolean[pgs.getWidth()][pgs.getHeight()];
@@ -109,9 +113,15 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
         return false;
     }
 
+    /*
+        1. attack enemies near the melee unit;
+        2. try not to block the way;
+        3. do nothing.
+     */
     protected void MeleeStandby(Unit melee, List<Unit> enemies, PhysicalGameState pgs) {
         boolean noEnemyAround = true;
         for (Unit enemy : enemies)
+            // attack nearby enemies
             if (ManhattanDistance(melee, enemy) <= 1 + max(melee.getType().attackRange, enemy.getType().attackRange)) {
                 attack(melee, enemy);
                 noEnemyAround = false;
@@ -132,6 +142,7 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                         conjWithBarrack = true;
                 }
             }
+            // try not to block the way (especially the barrack)
             if (emptyDirectionNum > 0 && (emptyDirectionNum < 3 || conjWithBarrack)) {
                 int direction = r.nextInt(emptyDirectionNum);
                 move(melee, melee.getX() + conjX[direction], melee.getY() + conjY[direction]);
@@ -160,9 +171,11 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
             AttackClosestEnemy(u, enemyList);
     }
 
+    // Build a new base near a resource that no bases around it
     protected void BuildBase(Unit worker, List<Unit> freeResource, Player p, PhysicalGameState pgs) {
         int X = -1, Y = -1;
         for (Unit target : freeResource) {
+            // find an empty position
             for (int i = 0; i < 16; ++i) {
                 X = target.getX() + roundX[i];
                 Y = target.getY() + roundY[i];
@@ -176,10 +189,14 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
             if (X >= 0)
                 break;
         }
+
         List<Integer> reservedPositions = new LinkedList<>();
         if (X >= 0) {
+            // build new base
             buildIfNotAlreadyBuilding(worker, baseType, X, Y, reservedPositions, p, pgs);
             resourceUsed += baseType.cost;
+
+            // remove resources nearby the new base from the freeResource list
             LinkedList<Unit> removingResource = new LinkedList<>();
             for (Unit resource : freeResource)
                 if (ManhattanDistance(resource, X, Y) <= resourceRange)
@@ -189,12 +206,15 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
         }
     }
 
+    // Build a new barrack near a base and away from resources (try not to block the harvesting workers)
     protected void BuildBarrack(Unit worker, List<Unit> baseList, Player p, PhysicalGameState pgs) {
         int X = -1, Y = -1;
         for (Unit target : baseList) {
+            // find an empty position
             for (int i = 0; i < 16; ++i) {
                 X = target.getX() + roundX[i];
                 Y = target.getY() + roundY[i];
+                // the position must be away from resources
                 if (X >= 0 && Y >= 0 && X < pgs.getWidth() && Y < pgs.getHeight() && pgs.getUnitAt(X, Y) == null) {
                     for (Unit u : pgs.getUnitsAround(X, Y, 2))
                         if (u.getType().isResource) {
@@ -213,11 +233,13 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                 break;
         }
         if (X >= 0) {
-            buildIfNotAlreadyBuilding(worker, barrackType, X, Y, new LinkedList<Integer>(), p, pgs);
+            // build new barrack
+            buildIfNotAlreadyBuilding(worker, barrackType, X, Y, new LinkedList<>(), p, pgs);
             resourceUsed += barrackType.cost;
         }
     }
 
+    // harvest the closest resource
     protected void WorkerHarvest(Unit worker, List<Unit> baseList, List<Unit> ourResource) {
         Unit closestBase = null;
         Unit closestResource = null;
@@ -253,6 +275,7 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
         }
     }
 
+    // train workers if the current number of workers is lower than workerLimit, otherwise do noting
     protected void BasesBehavior(List<Unit> baseList, List<Unit> workerList, int resourceNum, Player p, GameState gs) {
         int workerLimit = min((int)(resourceNum * workersForEachResource), baseList.size() * workersInEachBase);
         for (Unit base : baseList)
@@ -264,6 +287,12 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
             }
     }
 
+    /*
+        1. Try building new bases if there are free resources;
+        2. Try building new barracks if the current number of resources is equal to or higher than newBarracksThreshold;
+        3. Harvest resources with no more than workerLimit workers;
+        4. After 1, 2, 3, workers with no missions act as melee units.
+     */
     protected void WorkersBehavior(List<Unit> baseList, List<Unit> workerList, List<Unit> ourResource,
                                    List<Unit> freeResource, List<Unit> meleeList, int barrackNum,
                                    Player p, GameState gs) {
@@ -288,6 +317,10 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
             }
     }
 
+    /*
+        1. train melee units until we have lightRate lights, heavyRates heavies, rangedRate rangeds;
+        2. then keep training follow the scale.
+     */
     protected void BarracksBehavior(List<Unit> barrackList, List<Unit> meleeList, int lightRate,
                                     int heavyRate, int rangedRate, Player p) {
         int totalRate = lightRate + heavyRate + rangedRate;
@@ -342,6 +375,8 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
             enemyMovableUnits = new LinkedList<>(),
             enemyBuildings = new LinkedList<>(),
             enemyAroundBase = new LinkedList<>();
+
+        // Statistics
         for (Unit u : pgs.getUnits())
             if (u.getPlayer() == player)
                 if (u.getType() == baseType)
@@ -357,6 +392,8 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                     enemyMovableUnits.add(u);
                 else
                     enemyBuildings.add(u);
+
+        // Find enemies that are around our bases
         List<Unit> ourBuildings = new LinkedList<>(baseList);
         ourBuildings.addAll(barrackList);
         for (Unit enemy : enemyMovableUnits)
@@ -369,22 +406,14 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
         if (enemyAroundBase.isEmpty()) {    // no enemy around our bases
             ArrayList<Unit> enemyUnits = new ArrayList<>(enemyMovableUnits);
             enemyUnits.addAll(enemyBuildings);
-/*
-            ArrayList<Unit> ourUnits = new ArrayList<>(workerList);
-            ourUnits.addAll(meleeList);
-            for (Unit u : ourUnits) {
-                for (Unit target : enemyUnits)
-                    if (pf.pathToPositionInRangeExists(u, target.getPosition(pgs), u.getType().attackRange, gs, null)) {
-                        pathToEnemyExists = true;
-                        break;
-                    }
-                if (pathToEnemyExists)
-                    break;
-            }
-*/
-            boolean pathToEnemyExists = PathExistsInRange(baseList.getFirst().getX(), baseList.getFirst().getY(),
-                    enemyBuildings.getFirst().getX(), enemyBuildings.getFirst().getY(), 1, pgs);
 
+            // find if there is a path to enemies
+            boolean pathToEnemyExists = false;
+            if (!enemyUnits.isEmpty() && !baseList.isEmpty())
+                pathToEnemyExists = PathExistsInRange(baseList.getFirst().getX(), baseList.getFirst().getY(),
+                        enemyUnits.get(0).getX(), enemyUnits.get(0).getY(), 1, pgs);
+
+            // find resources that are around our bases and around no bases
             LinkedList<Unit> freeResource = new LinkedList<>();
             LinkedList<Unit> ourResource = new LinkedList<>();
             for (Unit u : pgs.getUnits())
@@ -407,11 +436,8 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                     return super.getAction(player, gs);
                 } else {
                     resourceUsed = 0;
-
                     BasesBehavior(baseList, workerList, ourResource.size(), p, gs);
-
                     WorkersBehavior(baseList, workerList, ourResource, freeResource, meleeList, barrackList.size(), p, gs);
-
                     BarracksBehavior(barrackList, meleeList, 8, 2, 3, p);
 
                     // Melee Behavior
@@ -423,11 +449,8 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
                 }
             } else {  // No path to enemy
                 resourceUsed = 0;
-
                 BasesBehavior(baseList, workerList, ourResource.size(), p, gs);
-
                 WorkersBehavior(baseList, workerList, ourResource, freeResource, meleeList, barrackList.size(), p, gs);
-
                 BarracksBehavior(barrackList, meleeList, 0, 0, 1, p);
 
                 // Melee Behavior
