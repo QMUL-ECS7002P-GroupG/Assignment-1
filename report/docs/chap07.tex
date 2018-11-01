@@ -61,3 +61,21 @@ Last is the type of map that opponents are not reachable at the beginning, at th
 a different strategy: First we train workers and let them build Barracks, after that let workers harvest to get
 resources. Then build Ranged Attack Units to attack. In this way, our system can do it best to train Ranged Attack
 Units, which has huge advantage in this map.
+
+At last, we run some tests between our bot and built-in strategies bot on 4 maps:
+\begin{enumerate}
+    \item baseWorkers16x16
+    \item baseWorkers24x24H
+    \item TwoBasesBarracks16x16
+    \item NoWhereToRun9x8
+\end{enumerate}
+In each map, we switched the position of twobots to run the test. The results are shown in Table \ref{table:test_result}.
+
+\input{tables/chap07_test.tex}
+
+From the charts we noticed that our tactical bot performs as good as expectation on most map, the only two battles
+that we lose is on the map with single base and no barracks against our ‘parents’ strategy ‘WorkerRushPlusPlus’.
+Because in our behaviour tree, when the game state is path-finding available and no barracks at initial state,
+our bot behaves as similar as ‘WorkerRushPlusPlus’. During the test two bots were locked in the battle but our
+bot finally lose the game, only defeat enemy once when at the position of ai2 on ‘baseWorkers16x16’. We will
+work on this and make progress and improvement in the future.
