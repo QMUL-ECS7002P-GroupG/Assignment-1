@@ -1,0 +1,32 @@
+\section{Benchmark}
+
+Our tactical bot extends built-in class 'WorkerRushPlusPlus', the reason will be
+demonstrated later in details, we override some methods and changed the 'PlayerAction'
+behaviour, at last we would test our bot with built-in strategies to measure the effectiveness.
+
+There were few difficulties during building our intelligent bot, the most awkward
+one is the path-finding problem. In our pre-defined behaviour tree, the bot has to
+judge whether there is an available road to destination, there was an existing method
+of path-finding, this method bases on a moveable unit to find the way, but in the map
+'NoWhereToRun9x8', there is only one base at beginning, which always leads to the wrong
+judgement of path-finding state and the bot behaviour did not meet our expectation. So
+we rewrote the path-finding method in our code, considering the road between two coordinates
+existing or not. Then the problem was fixed.
+
+Another problem appeared during the test of map 'NoWhereToRun9x8'. In our strategy, the
+barrack would keep training attack units until the road to enemy is clear, while the
+barrack would crashed when it is surrounded by units. So we changed the rules of units
+'Standby', make them would move to nearest grid to make the way when they 'notice' they
+are near the barrack or other unit.
+
+One of the most important factor of win the battle is finance. In this game it represents
+the harvesting efficient, a large amount of workers is not necessarily the best to the speed
+of obtaining resource. In some situations too many workers might block the road, sometimes
+producing workers would overuse resource of training attack units. So a balance relation
+between worker amount and game state is necessary. In our strategy, we consider the minimum
+value between base amount times 2 and resource unit amount times 1.5 as worker amount. But
+some times the resource unit might at corner or surrounded by other resource, which could
+leads to wrong judgement and produce redundant workers then reduce efficiency. We solved this
+problem by using the path-finding method we rewrote before to judge whether the worker is able
+to get to the resource first to count the available resource, then all the workers are on their
+duty.

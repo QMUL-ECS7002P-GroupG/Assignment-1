@@ -1,19 +1,31 @@
-\documentclass[12pt]{article}
+\documentclass[11pt, a4paper]{article}
 
 \usepackage{tikz}
-
-\title{ECS7002P Assignment 1 Report - Group G}
-
-\author{Bo Peng, Yunyao Liu, Jiageng Li}
+\usepackage{minted}
+\usepackage{booktabs}
+\usepackage[utf8]{inputenc}
 
 \begin{document}
-    \foreach \i in {0,1,...,9}{
-        \foreach \j in {0,1,...,9}{
-            \IfFileExists{docs/chap\i\j.tex}{
-                \include{docs/chap\i\j}
-            }{}
-        }
-    }
-\end{document}
 
-123
+\title{ECS7002P Assignment 1 Report - Group G}
+\author{Bo Peng, Yunyao Liu, Jiageng Li}
+\maketitle
+
+\input{docs/abstract}
+
+%\tableofcontents
+
+\foreach \i in {0,1,...,9}{
+    \foreach \j in {0,1,...,9}{
+        \IfFileExists{docs/chap\i\j.tex}{
+            \input{docs/chap\i\j}
+        }{}
+    }
+}
+
+\clearpage
+
+\bibliographystyle{plain}
+\bibliography{references} 
+
+\end{document}

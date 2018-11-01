@@ -1,0 +1,36 @@
+\section{Introduction}
+
+In the past few years, significant progress has been made in stronger abstract game playing agents,
+the artificial intelligence (AI) controller of game agent is much more stronger to be able to beat the top
+professional human players such as Alpha Go, while the Real-Time Strategy (RTS) game is different and
+more complicated from abstract game as chess, the actions that different game agents assigned could be
+simultaneous, in some situations the player only have the partial vision and size of game state and game
+area, due to the game state changes at per game time, the available and possible order actions of each
+game units are limited in different game state. Every imperceptible change of game state could result in
+a totally different game ending. Because of those factors that is difficult and complex for artificial
+intelligence host to judge and make decision of the game, human players are usually stronger than the AI bots.
+
+The bot that our group created is based on a simple type of RTS game which called microRTS, microRTS is a
+two-player game build on several different grid map, each player of the game could control units and assign
+actions to them for the final goal of destroying each units of the opponent. In microRTS, the basic elements
+include resource, building and moving units, the resource is the initial immovable units on the map, which
+could be harvested to producing new units. The building units include base and barrack which are fixed on
+the map, base and resource are both the initial units of the game, base could produce worker and barrack
+could produce other attack units. The moving units include worker, light, heavy and ranged, worker can only
+be produced by base and barrack produced other three types of units. The duty of worker is to harvest resource
+and build new buildings, worker does have the attack ability but the damage is low. Other three attack units
+which produced by barrack divided into light, heavy and ranged. As the name suggests, light has high movement
+speed and considerable damage points, heavy has the highest damage point and hit point but the lowest movement
+speed, ranged has lower hit points but the maximum attack range.
+
+Although the microRTS has the reduced units and simpler game state than other complex RTS game as StarCraft,
+the decision space is still huge. The game map is rectangular grid-based map of arbitrary size, each grid represent
+a movement unit. The initial game state is variant that resource and base could be anywhere, sometimes the resource
+might separate the map to two parts, each side set up a player, which means the player could not get to their opponent
+directly. In some initial map the resource is lack, some there is an built-in barrack near the base. While those are
+just the complexity of the initial state, if the initial game state is set as the root of the decision tree, each
+change of the game state will increase the branch of the decision tree with the game goes on. In order to defeat
+the opponent, it is necessary to build a bot strategy that adapts the volatile situation. The aim of our group is
+to construct such a bot strategy which is strong enough to beat the opponent of variant game state, the bot we create
+using the decision tree to judge the game state and make actions. Through the test, the bot we create is able to defeat
+all the built-in bot on four given testing map.

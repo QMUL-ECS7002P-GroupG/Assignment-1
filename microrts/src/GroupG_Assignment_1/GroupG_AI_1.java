@@ -77,7 +77,7 @@ public class GroupG_AI_1 extends WorkerRushPlusPlus {
 
     /*
         BFS path finding from (startX, startY) to (targetX, targetY) in range.
-        Methods in the PathFind.class require a unit, this method does not.
+        Methods in the PathFinding.class require a unit, this method does not.
      */
     protected boolean PathExistsInRange(int startX, int startY, int targetX, int targetY, int range,
                                         PhysicalGameState pgs) {

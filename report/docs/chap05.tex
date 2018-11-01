@@ -1,0 +1,300 @@
+\section{Techniques Implemented}
+
+The main parts of our controller are shown as below, I will introduce them combined with our code
+to you including techniques they used and how they work respectively. Some illustration is shown
+as code comments. 
+
+\subsection{BFS Path Finding Strategy}
+In our controller, we used Breadth-First Search to get to our target from a start point in range.
+
+\begin{minted}[linenos, fontsize=\small]{java}
+ /*
+    BFS path finding from (startX, startY) to (targetX, targetY) in range.
+    Methods in the PathFinding.class require a unit, this method does not.
+ */
+protected boolean PathExistsInRange(int startX, int startY, int targetX,
+        int targetY, int range, PhysicalGameState pgs) {
+    boolean visited[][] = new boolean[pgs.getWidth()][pgs.getHeight()];
+    for (int i = 0; i < pgs.getWidth(); ++i)
+        for (int j = 0; j < pgs.getHeight(); ++j)
+            visited[i][j] = false;
+    for (Unit u : pgs.getUnits())
+        if (u.getType().isResource)
+            visited[u.getX()][u.getY()] = true;
+    int queX[] = new int[pgs.getWidth() * pgs.getHeight() + 1],
+        queY[] = new int[pgs.getWidth() * pgs.getHeight() + 1];
+    int head = 0, tail = 1;
+    queX[0] = startX;
+    queY[0] = startY;
+    visited[startX][startY] = true;
+    while (head < tail) {
+        for (int i = 0; i < 4; ++i) {
+            int nextX = queX[head] + conjX[i],
+                nextY = queY[head] + conjY[i];
+            if (nextX >= 0 && nextX < pgs.getWidth() && nextY >= 0 &&
+                    nextY < pgs.getHeight() && !visited[nextX][nextY]) {
+                if (ManhattanDistance(nextX, nextY, targetX, targetY) <= range)
+                    return true;
+                queX[tail] = nextX;
+                queY[tail] = nextY;
+                visited[nextX][nextY] = true;
+                ++tail;
+            }
+        }
+        ++head;
+    }
+    return false;
+}
+\end{minted}
+
+\subsection{Melee Units Standby Strategy}
+This method called ‘MelleeStandby’, it has the functions that: Attack enemies near
+the melee unit; Try not to block the way, blocking way can cause game crush; And a
+standby function. I will introduce this function below, some illustration is shown
+as code comments.
+
+\begin{minted}[linenos, fontsize=\small]{java}
+protected void MeleeStandby(Unit melee, List<Unit> enemies, PhysicalGameState pgs) {
+    boolean noEnemyAround = true;
+    for (Unit enemy : enemies)
+        // attack nearby enemies
+        if (ManhattanDistance(melee, enemy) <= 1 + max(melee.getType().attackRange,
+                enemy.getType().attackRange)) {
+            attack(melee, enemy);
+            noEnemyAround = false;
+            break;
+        }
+    if (noEnemyAround) {
+        int emptyDirection[] = {-1, -1, -1, -1};
+        int emptyDirectionNum = 0;
+        boolean conjWithBarrack = false;
+        for (int i = 0; i < 4; ++i) {
+            int X = melee.getX() + conjX[i];
+            int Y = melee.getY() + conjY[i];
+            if (X >= 0 && X < pgs.getWidth() && Y >= 0 && Y <= pgs.getHeight()) {
+                Unit u = pgs.getUnitAt(melee.getX() + conjX[i], melee.getY() + conjY[i]);
+                if (u == null)
+                    emptyDirection[emptyDirectionNum++] = i;
+                else if (u.getType() == barrackType)
+                    conjWithBarrack = true;
+            }
+        }
+        // try not to block the way (especially the barrack)
+        if (emptyDirectionNum > 0 && (emptyDirectionNum < 3 || conjWithBarrack)) {
+            int direction = r.nextInt(emptyDirectionNum);
+            move(melee, melee.getX() + conjX[direction], melee.getY() + conjY[direction]);
+        }
+    }
+}
+\end{minted}
+
+\subsection{When and Where to Build Bases}
+‘BuildBase’ method, which builds a new base near a resource that no bases around it.
+
+\begin{minted}[linenos, fontsize=\small]{java}
+protected void BuildBase(Unit worker, List<Unit> freeResource, Player p,
+        PhysicalGameState pgs) {
+    int X = -1, Y = -1;
+    for (Unit target : freeResource) {
+        // find an empty position
+        for (int i = 0; i < 16; ++i) {
+            X = target.getX() + roundX[i];
+            Y = target.getY() + roundY[i];
+            if (X >= 0 && Y >= 0 && X < pgs.getWidth() && Y < pgs.getHeight() &&
+                    pgs.getUnitAt(X, Y) == null) {
+                break;
+            } else {
+                X = -1;
+                Y = -1;
+            }
+        }
+        if (X >= 0)
+            break;
+    }
+
+    List<Integer> reservedPositions = new LinkedList<>();
+    if (X >= 0) {
+        // build new base
+        buildIfNotAlreadyBuilding(worker, baseType, X, Y, reservedPositions, p, pgs);
+        resourceUsed += baseType.cost;
+
+        // remove resources nearby the new base from the freeResource list
+        LinkedList<Unit> removingResource = new LinkedList<>();
+        for (Unit resource : freeResource)
+            if (ManhattanDistance(resource, X, Y) <= resourceRange)
+                removingResource.add(resource);
+        for (Unit resource : removingResource)
+            freeResource.remove(resource);
+    }
+}
+\end{minted}
+
+\subsection{Train Workers}
+‘BasesBehavior’ method: train workers if the current number of workers is lower than
+‘workerLimit’, otherwise do nothing, this method acts as a Decorator in our system,
+which will determine what type of worker to train depends on parameter value.
+
+\begin{minted}[linenos, fontsize=\small]{java}
+protected void BasesBehavior(List<Unit> baseList, List<Unit> workerList,
+        int resourceNum, Player p, GameState gs) {
+    int workerLimit = min((int)(resourceNum * workersForEachResource),
+            baseList.size() * workersInEachBase);
+    for (Unit base : baseList)
+        if (gs.getActionAssignment(base) == null && workerList.size() < workerLimit &&
+                p.getResources() - resourceUsed >= workerType.cost) {
+            train(base, workerType);
+            --workerLimit;
+            resourceUsed += workerType.cost;
+        }
+}
+\end{minted}
+
+\subsection{Workers Behavior}
+‘WorkersBehavior’ method. This method combines Decision Tree and Behaviour Tree to realize these functions:
+\begin{enumerate}
+    \item Try to build new bases if there are free resources;
+    \item Try to build new barracks if the current number of resources is equal to or higher than ‘newBarracksThreshold’;
+    \item Harvest resources with no more than ‘workerLimit workers’;
+    \item After 1, 2, 3, workers with no mission act as melee units.
+\end{enumerate}
+
+\begin{minted}[linenos, fontsize=\small]{java}
+protected void WorkersBehavior(List<Unit> baseList, List<Unit> workerList,
+        List<Unit> ourResource, List<Unit> freeResource, List<Unit> meleeList,
+        int barrackNum, Player p, GameState gs) {
+    PhysicalGameState pgs = gs.getPhysicalGameState();
+    int workerLimit = min((int)(ourResource.size() * workersForEachResource),
+            baseList.size() * workersInEachBase);
+    for (Unit worker : workerList)
+        if (gs.getActionAssignment(worker) == null) {
+            // build new base
+            if (!freeResource.isEmpty() && p.getResources() - resourceUsed
+                    >= baseType.cost)
+                BuildBase(worker, freeResource, p, pgs);
+            // build new barrack
+            else if ((barrackNum == 0 || p.getResources() - resourceUsed
+                    >= newBarracksThreshold) &&
+                    p.getResources() - resourceUsed >= barrackType.cost)
+                BuildBarrack(worker, baseList, p, pgs);
+            else if (workerLimit > 0) { // Harvest
+                WorkerHarvest(worker, baseList, ourResource);
+                --workerLimit;
+            } else {    // free workers as melee units
+                meleeList.add(worker);
+            }
+        }
+}
+\end{minted}
+
+\subsection{Statistics and Summary}
+‘getAction’ method. Also combines Decision Tree and Behavior Tree to determine units’ actions.
+
+\begin{minted}[linenos, fontsize=\small]{java}
+public PlayerAction getAction(int player, GameState gs) {
+    PhysicalGameState pgs = gs.getPhysicalGameState();
+    Player p = gs.getPlayer(player);
+    PlayerAction pa = new PlayerAction();
+
+    int enemyPlayer = 1 - player;
+    LinkedList<Unit>
+        baseList = new LinkedList<>(),
+        barrackList = new LinkedList<>(),
+        workerList = new LinkedList<>(),
+        meleeList = new LinkedList<>(),
+        enemyMovableUnits = new LinkedList<>(),
+        enemyBuildings = new LinkedList<>(),
+        enemyAroundBase = new LinkedList<>();
+
+    // Statistics
+    for (Unit u : pgs.getUnits())
+        if (u.getPlayer() == player)
+            if (u.getType() == baseType)
+                baseList.add(u);
+            else if (u.getType() == barrackType)
+                barrackList.add(u);
+            else if (u.getType() == workerType)
+                workerList.add(u);
+            else
+                meleeList.add(u);
+        else if (u.getPlayer() == enemyPlayer)
+            if (u.getType().canMove)
+                enemyMovableUnits.add(u);
+            else
+                enemyBuildings.add(u);
+
+    // Find enemies that are around our bases
+    List<Unit> ourBuildings = new LinkedList<>(baseList);
+    ourBuildings.addAll(barrackList);
+    for (Unit enemy : enemyMovableUnits)
+        for (Unit base : baseList)
+            if (ManhattanDistance(enemy, base) <= baseAlarmDistance) {
+                enemyAroundBase.add(enemy);
+                break;
+            }
+
+    if (enemyAroundBase.isEmpty()) {    // no enemy around our bases
+        ArrayList<Unit> enemyUnits = new ArrayList<>(enemyMovableUnits);
+        enemyUnits.addAll(enemyBuildings);
+
+        // find if there is a path to enemies
+        boolean pathToEnemyExists = false;
+        if (!enemyUnits.isEmpty() && !baseList.isEmpty())
+            pathToEnemyExists = PathExistsInRange(
+                    baseList.getFirst().getX(), baseList.getFirst().getY(),
+                    enemyUnits.get(0).getX(), enemyUnits.get(0).getY(), 1, pgs);
+
+        // find resources that are around our bases and around no bases
+        LinkedList<Unit> freeResource = new LinkedList<>();
+        LinkedList<Unit> ourResource = new LinkedList<>();
+        for (Unit u : pgs.getUnits())
+            if (u.getType().isResource) {
+                boolean baseAroundResource = false;
+                for (Unit v : pgs.getUnitsAround(u.getX(), u.getY(), resourceRange))
+                    if (v.getType() == baseType) {
+                        baseAroundResource = true;
+                        if (v.getPlayer() == player &&
+                                PathExistsInRange(v.getX(), v.getY(),
+                                                  u.getX(), u.getY(), 1, pgs))
+                            ourResource.add(u);
+                        break;
+                    }
+                if (!baseAroundResource)
+                    freeResource.add(u);
+            }
+
+        if (pathToEnemyExists) {  // Exist a path to enemy
+            if (barrackList.isEmpty()) {
+                return super.getAction(player, gs);
+            } else {
+                resourceUsed = 0;
+                BasesBehavior(baseList, workerList, ourResource.size(), p, gs);
+                WorkersBehavior(baseList, workerList, ourResource, freeResource,
+                        meleeList, barrackList.size(), p, gs);
+                BarracksBehavior(barrackList, meleeList, 8, 2, 3, p);
+
+                // Melee Behavior
+                if (ourResource.isEmpty() || meleeList.size() >= attackThreshold)
+                    AttackClosestEnemy(meleeList, enemyUnits);
+                else
+                    for (Unit melee : meleeList)
+                        MeleeStandby(melee, enemyUnits, pgs);
+            }
+        } else {  // No path to enemy
+            resourceUsed = 0;
+            BasesBehavior(baseList, workerList, ourResource.size(), p, gs);
+            WorkersBehavior(baseList, workerList, ourResource, freeResource,
+                    meleeList, barrackList.size(), p, gs);
+            BarracksBehavior(barrackList, meleeList, 0, 0, 1, p);
+
+            // Melee Behavior
+            for (Unit melee : meleeList)
+                MeleeStandby(melee, enemyUnits, pgs);
+        }
+    } else {    // have enemy around our bases
+        AttackClosestEnemy(meleeList, enemyAroundBase);
+        AttackClosestEnemy(workerList, enemyAroundBase);
+    }
+
+    return translateActions(player, gs);
+}
+\end{minted}

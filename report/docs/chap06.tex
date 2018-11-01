@@ -1,0 +1,73 @@
+\section{Experimental Study}
+
+Before we design the behaviour tree of our intelligent battle bot, we have conducted
+several test between the built-in strategies to decide which strategy is better within
+specific game state and customize our unique strategy for the bot to achieve better
+performance on the battle field. The built-in bot we have tested consist of WorkerRush (WR),
+WorkerDefence (WD), WorkerRushPlusPlus (WR++), HeavyRush (HR), HeavyDefence (HD),
+LightRush (LR), LightDefence (LD), RangedRush (RR), RangedDefence (RD) and
+SimpleEconomicRush (SER). First we test the map of 'basesworkers16x16', the
+competition was set between different Rush strategies(exclude Defence strategies), the
+testing result is shown in the Table \ref{table:basesworkers16x16}.
+
+\input{tables/chap06_basesworkers16x16.tex}
+
+From the Table \ref{table:basesworkers16x16}, we noticed that on this battle map the built-in
+bot with 'WorkerRushPlusPlus' strategy presents the highest combat effectiveness. The difference
+between strategy 'WorkRush' and 'WorkRushPlusPlus' is the harvest efficient, result in
+'WorkerRushPlusPlus' perform better than 'WorkRush' on this map. The testing result is similar
+on the map 'baseworkers24x24H', the reason we speculate is although the size of battle map is
+expanded, the transformation is not enough to turn the table. Through the observation of fighting
+procedure, we noticed that the scale and initial condition such as the number of resource and
+whether there exists barracks near the base at the begin of the map are major cause of why
+'WorkerRushPlusPlus' perform so good. Even though worker is definitely not the best choice to
+fight, worker still has the attack ability, with the advantages of high movement speed and low
+production cost of resource and time, a flood of workers could be an army with destructive force
+in the map with small scale, with the observation of battle between 'WorkerRush' and strategies
+which have priority to build barracks when there is no barrack such as 'SimpleEconomicRush', the
+workers always get to the opponent's buildings and cause damage before the opponent's barrack construction
+complete. The situation changed in a map of larger scale, if the worker failed to destroy opponent's
+barracks or bases before the first training of attack units as heavy, light or ranged finished, the
+situation is reversed, 'WorkerRush' bot would be defeated finally. From the above, the strategy
+'WorkerRushPlusPlus' is invoked by our tactical bot after the judgement of map scale and barracks
+state, if map size is not large enough and no barracks at beginning, do 'WorkerRushPlusPlus'.
+
+We run the test between 'Rush' and 'Defence' strategies, the situation did not change significantly
+of the same type strategy and the 'Rush' bots performed better, so the 'Defence' strategies were abandoned.
+
+Then we switched map to 'TwoBasesBarracks16x16' and run the test, the result is shown on the
+Table \ref{table:TwoBasesBarracks16x16}.
+
+\input{tables/chap06_TwoBasesBarracks16x16.tex}
+
+From the result we noticed as prediction, the 'Worker' strategies were utterly routed. The reason is
+apparently, there are two initial barracks of each player on the map, only training worker is not enough
+to beat enemy. On this map, we noticed that 'HeavyRush' is the strongest bot, which means heavy unit is
+stronger than other two types attack units. But there is a strange phenomenon that the strategy
+'SimpleEconomicRush' failed to beat any bot include 'Worker' bot, which is unexpected. Though analysing
+the code structure and battle procedure, we discovered that one rule of 'SimpleEconomicRush' is that the
+worker amount depends on the base amount, which is 3 times of base amount. On the map 'TwoBasesBarracks16x16',
+there exist two bases of each player, leads to the bot of 'SimpleEconomicRush' would create 6 workers,
+finally such amount of workers have possibilities to block the road between base and resource, then the
+whole action gets stuck and bot crashed. In order to solve this problem and test the real strength of
+'SimpleEconomicRush', we run the test on previous map which only have one base and no barracks for each
+player and get rid of 'Worker' strategies(The reason why eliminating 'Worker' is that create a condition
+that each player has barracks, but 'Worker' strategies are incapable to build barracks), the situation is
+changed, 'SimpleEconomicRush' become the best bot for beating any other 'Rush' bot. Through analysing, the
+strength of 'SimpleEconomicRush' including the higher harvesting efficient and variant attack units portfolio.
+So when building our tactical bot, under the condition of existing barracks on map, we simulated the
+behaviour of 'SimpleEconomicRush' and fixed the relation between worker amount and base amount to avoid
+stuck and crash problems.
+
+The final map we tested is 'NoWhereToRun9x8'. In this map, the resource split the map into two parts,
+each player located in one side, which means the moveable unit is unable to reach opponent's units or
+buildings directly. The only way to get through the path is waiting for the resource unit is exhausted.
+The testing result is shown at the Table \ref{table:NoWhereToRun9x8}.
+
+\input{tables/chap06_NoWhereToRun9x8.tex}
+
+From the result we noticed that 'SimpleEconomicRush' still perform best. But there was one thing caught
+our attention, the ranged units shown unexpected battle effectiveness on this map, ranged units have the
+largest attack range, which make them able to ignore the terrain to cause damage. Because the resource
+divide the map into two parts, heavy and light units is unable to get close to ranged but ranged could
+attack them. So when we design our strategy, we set up a rule that when the path.
